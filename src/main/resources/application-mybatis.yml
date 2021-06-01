@@ -1,0 +1,4 @@
+mybatis:
+  type-aliases-package: cn.edu.printer.pojo
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

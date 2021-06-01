@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打印页</title>
+    <script th:src="@{/js/vue.min.js}"></script>
+    <script th:src="@{/js/vue-router.js}"></script>
+    <script th:src="@{/js/axios.js}"></script>
+    <script th:src="@{/js/moment.js}"></script>
+    <link rel="shortcut icon" th:href="@{/img/favicon.ico}" type="image/x-icon">
+
+    <!-- 引入样式 -->
+<!--    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">-->
+    <link rel="stylesheet" th:href="@{/element/lib/theme-chalk/index.css}">
+    <!-- 引入组件库 -->
+<!--    <script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
+    <script th:src="@{/element/lib/index.js}"></script>
+</head>
+<body>
+    <div id="app">
+        <el-container>
+            <el-header>
+                <el-row>
+                    <el-col :span="11">
+                        <el-link>
+                            <router-link to="./printer" active-class="active">打印</router-link>
+                        </el-link>
+                    </el-col>
+                    <el-col :span="11">
+                        <el-link>
+                            <router-link to="./submission" active-class="active">打印记录</router-link>
+                        </el-link>
+                    </el-col>
+                    <el-col :span="2">
+                            <div v-if="user.username">
+                                <el-link type="primary">{{user.show_name}}</el-link>
+                                <el-link @click="logout">退出</el-link>
+                            </div>
+                            <div v-else>
+                                <el-button type="text" @click="loginDialog.dialogVisible = true">
+                                    <span style="color: #99a9bf">登陆</span>
+                                </el-button>
+                            </div>
+
+                    </el-col>
+                </el-row>
+            </el-header>
+<!--            <el-main>-->
+            <div style="margin: 30px;">
+                <el-dialog
+                        title="登陆"
+                        :visible.sync="loginDialog.dialogVisible"
+                        width="30%"
+                        :before-close="handleClose">
+
+                    <el-form :model="loginForm" :rules="rules" ref="loginForm" label-width="100px" class="demo-ruleForm">
+                        <el-form-item label="用户名" prop="username">
+                            <el-input placeholder="请输入用户名" v-model="loginForm.username"></el-input>
+                        </el-form-item>
+                        <el-form-item label="密码" prop="password">
+                            <el-input placeholder="请输入密码" v-model="loginForm.password" show-password></el-input>
+                        </el-form-item>
+
+                        <div style="margin-left: 15%">
+                            <el-form-item>
+                                <el-button type="primary" @click="submitForm('loginForm')">登陆</el-button>
+                                <el-button @click="resetForm('loginForm')">重置</el-button>
+                            </el-form-item>
+                        </div>
+                    </el-form>
+
+                </el-dialog>
+                <router-view></router-view>
+            </div>
+<!--            </el-main>-->
+        </el-container>
+    </div>
+
+</body>
+<style>
+    pre{
+        overflow:auto;
+    }
+    pre{
+        white-space:pre-wrap;
+    }
+    .demo-table-expand {
+        font-size: 0;
+    }
+    .demo-table-expand label {
+        width: 90px;
+        color: #99a9bf;
+    }
+    .demo-table-expand .el-form-item {
+        margin-right: 0;
+        margin-bottom: 0;
+        width: 50%;
+    }
+    .active{
+        color: #2d76f2;
+    }
+    a{
+        text-decoration:none;
+        color: #000;
+    }
+    body{
+        background-color: #EEEEEE;
+    }
+    .el-header, .el-footer {
+        background-color: #FDFDFD;
+        color: #333;
+        text-align: center;
+        line-height: 60px;
+    }
+
+    .el-aside {
+        /*background-color: #D3DCE6;*/
+        color: #f0f0f0;
+        text-align: center;
+        line-height: 200px;
+    }
+
+    .el-main {
+        /*background-color: #E9EEF3;*/
+        /*color: #f0f0f0;*/
+        text-align: center;
+        line-height: 160px;
+    }
+
+    body > .el-container {
+        margin-bottom: 40px;
+    }
+
+    .el-container:nth-child(5) .el-aside,
+    .el-container:nth-child(6) .el-aside {
+        line-height: 260px;
+    }
+
+    .el-container:nth-child(7) .el-aside {
+        line-height: 320px;
+    }
+</style>
+<script>
+    let one = {template:`
+        <div>
+        <div style="margin: 20px 0;"></div>
+        <el-input
+          type="textarea"
+          autosize
+          :autosize="{ minRows: 20, maxRows: 30}"
+          placeholder="请输入打印内容"
+          v-model="context">
+        </el-input>
+        <div style="padding-left: 50%;margin-top: 20px">
+          <el-button type="primary" :loading="loading" @click="submit()">提交</el-button>
+        </div>
+        </div>
+     `,data(){
+            return {
+                context: '',
+                loading: false
+            }
+        },
+        methods: {
+            submit() {
+                if (this.context.length == 0) {
+                    this.$message.error('请输入打印内容');
+                    return;
+                }
+                let ap = this;
+                ap.loading = true
+                axios({
+                    method: 'post',
+                    url: '/API/submission',
+                    data: {
+                        context: ap.context,
+                    }
+                }).then(function(response){
+                    let data = response.data;
+                    if (data.success) {
+                        app.$message({
+                            message: '提交成功，请到打印记录页查看打印状态',
+                            type: 'success'
+                        });
+                        ap.loading = false
+                    } else {
+                        app.$message.error(response.data.msg);
+                        ap.loading = false
+                    }
+                },function(err){
+                    app.$message.error('提交失败');
+                    ap.loading = false
+                })
+            }
+        }
+    };
+    let two = {template:`
+       <div>
+          <el-table
+            :data="page.pageData"
+            style="width: 100%">
+            <el-table-column type="expand">
+              <template slot-scope="props">
+                <el-form label-position="left" inline class="demo-table-expand">
+                  <el-form-item label="用户名">
+                    <span>{{ props.row.user.show_name }}</span>
+                  </el-form-item>
+                  <el-form-item label="提交时间">
+                    <span>{{ two.computed.dateFormat(props.row.gmt_create) }}</span>
+                  </el-form-item>
+                  <el-form-item label="处理状态">
+                    <span>{{ props.row.status }}</span>
+                  </el-form-item>
+                  <el-form-item></el-form-item>
+                  <el-form-item label="打印内容">
+                    <pre><code>{{ props.row.context }}</code></pre>
+                  </el-form-item>
+                </el-form>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="用户名"
+              prop="user.show_name">
+            </el-table-column>
+            <el-table-column
+              label="提交时间"
+              prop="gmt_create" :formatter="format">
+            </el-table-column>
+            <el-table-column
+              label="处理状态"
+              prop="status">
+            </el-table-column>
+          </el-table>
+          <div style="text-align: center; margin-top: 30px">
+            <el-pagination
+              background
+              @size-change="findSubmission"
+              @current-change="findSubmission"
+              @prev-click="pre"
+              @next-click="next"
+              @current-page.sync="findSubmission"
+              :page-size="page.pageSize"
+              :current-page.sync = "page.pageNo"
+              layout="prev, pager, next"
+              :total="page.totalPages">
+            </el-pagination>
+          </div>
+
+        </div>
+
+    `,
+        data(){
+            return {
+                    page: {
+                        pageSize: 10,
+                        pageNo: 1,
+                        totalPages: 0,
+                        recordCount: 0,
+                        pageData: []
+                    }
+            }
+        },
+        created(){
+            this.findSubmission()
+        },
+        methods: {
+            findSubmission: function () {
+                let ap = this;
+                axios({
+                    method: 'post',
+                    url: '/API/user_submission_list',
+                    data: ap.page,
+                }).then(function(response){
+                    let data = response.data;
+                    if (data.success) {
+                        ap.page = data.data
+                    }
+
+                },function(err){
+                    app.$message.error('服务器错误');
+                })
+            },
+            format:function(row,column){
+                let date = row[column.property];
+                if(date === undefined){
+                    return ''
+                }
+                return moment(date).format("YYYY-MM-DD HH:mm:ss")
+            },
+            pre() {
+                this.page.pageNo --
+                this.findSubmission()
+            },
+            next() {
+                this.page.pageNo ++
+                this.findSubmission()
+            }
+        },
+        computed: {
+            dateFormat:function(date){
+                if(date === undefined){
+                    return ''
+                }
+                return moment(date).format("YYYY-MM-DD HH:mm:ss")
+            },
+        }
+    };
+    let router = new VueRouter({
+        mode: 'history',
+        routes:[
+            {
+                path:'/',
+                redirect:'/printer'
+            },
+            {
+                path: '/printer',
+                component:one
+            },
+            {
+                path: '/submission',
+                component: two
+            }
+        ]
+    })
+    let app = new Vue({
+        el: "#app",
+        data: {
+            loginDialog: {
+                dialogVisible: false,
+            },
+            loginForm: {
+                username: '',
+                password: ''
+            },
+            rules: {
+                username: [
+                    { required: true, message: '请输入用户名', trigger: 'blur' },
+                    // { min: 1, max: 100, message: '用户名不合法', trigger: 'blur' }
+                ],
+                password: [
+                    { required: true, message: '请输入密码', trigger: 'blur' },
+                    // { min: 1, max: 100, message: '密码不合法', trigger: 'blur' }
+                ]
+            },
+            user: {
+                username: null,
+                show_name: null,
+                seat_number: null
+            }
+        },
+        router,
+        created(){
+            this.convert();
+        },
+        methods: {
+            convert: function () {
+                axios.get("/API/login").then(res => {
+                    if (res.data.success) this.user = res.data.data;
+                })
+            },
+            handleClose(done) {
+                done()
+            },
+            submitForm(formName) {
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        axios({
+                            method: 'post',
+                            url: '/API/login',
+                            data: this.loginForm,
+                        }).then(function(response){
+                            let data = response.data;
+                            if (data.success) {
+                                app.user = response.data.data
+                                app.loginDialog.dialogVisible = false
+                                app.$message({
+                                    message: '登陆成功',
+                                    type: 'success'
+                                });
+                            } else {
+                                app.$message.error('用户名或密码错误');
+                            }
+
+                        },function(err){
+                            app.$message.error('服务器错误');
+                        })
+                    } else {
+                        this.$message.error('提交失败');
+                        return false;
+                    }
+                });
+            },
+            resetForm(formName) {
+                this.$refs[formName].resetFields();
+            },
+            logout () {
+                axios.get("/API/logout").then(res => {
+                    if (res.data.success) {
+                        app.$message({
+                            message: '退出成功',
+                            type: 'success'
+                        });
+                        this.user = res.data.data
+                    }
+                })
+            }
+        }
+    })
+
+</script>
+</html>
+
